@@ -1,0 +1,5 @@
+[updates]
+name=Updates
+baseurl=http://10.10.60.169/updates/
+enabled=1
+gpgcheck=0

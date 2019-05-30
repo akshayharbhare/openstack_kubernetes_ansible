@@ -1,0 +1,21 @@
+---
+- name: launch vm for worker1 node
+  os_server:
+    state: present
+    auth:
+      auth_url: "{{ openstack_url }}"
+      username: "{{ openstack_username }}"
+      password: "{{ openstack_password }}"
+      project_name: "{{ openstack_project }}"
+    name: "{{ instance_worker1_name }}"
+    image:  "{{ instance_worker1_image }}"
+    flavor:  "{{ instance_worker1_flavor }}"
+    security_groups: "{{ security_group }}"
+    timeout: 3600
+    auto_ip: yes
+#    volumes: "{{ instance_worker1_volume }}"
+    volumes: "{{ worker1_volume.id }}"
+    nics:
+      - net-id: "{{ nic }}"
+  register: worker1_ip
+

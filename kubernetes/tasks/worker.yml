@@ -1,0 +1,175 @@
+---
+#- name: installing selinux dependecy
+#  yum:
+#    name: libselinux-python
+#    state: latest
+
+#- name: change selinux policy
+#  selinux:
+#    policy: targeted
+#    state: permissive
+
+- command: setenforce 0
+
+- command: sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
+
+- name: making entries in bridge-nf-call-iptables file
+  lineinfile:
+    path: /proc/sys/net/bridge/bridge-nf-call-iptables
+    state: present
+    line: '1'
+    create: yes
+  ignore_errors: yes
+
+- name: creating folder to repo backup
+  file:
+    path: /etc/yum.repos.d/bkp
+    state: directory
+
+- name: copying repo file to bkp directory
+  shell: mv -f /etc/yum.repos.d/*.repo /etc/yum.repos.d/bkp/
+  ignore_errors: yes
+
+- name: copying base, docker, extras, gluster and updates repo
+  copy:
+    src: "{{ item }}"
+    dest: /etc/yum.repos.d
+  with_items:
+  - base.repo
+  - docker.repo
+  - extras.repo
+  - gluster.repo
+  - updates.repo
+
+- name: making entries in kubernetes repo file
+  blockinfile:
+    path: /etc/yum.repos.d/kubernetes.repo
+    state: present
+    create: yes
+    insertafter: EOF
+    block: |
+      [kubernetes]
+      name=Kubernetes
+      baseurl=http://10.10.60.169/kubernetes/
+      enabled=1
+      gpgcheck=0
+
+
+- name: yum cleaning
+  command: yum clean all
+
+- name: swap off
+  command: swapoff -a
+
+- name: Installing Packages
+  yum:
+    name: ['kubeadm', 'docker', 'firewalld']
+    state: latest
+
+- name: start and enable kubelet service
+  service:
+    name: kubelet
+    state: started
+    enabled: yes
+
+
+- name: configuring docker file to use ip address
+  lineinfile:
+    path: /etc/sysconfig/docker
+    regexp: '^OPTIONS'
+#    line: "OPTIONS='--selinux-enabled --insecure-registry={{ ansible_all_ipv4_addresses[0] }}:5000--log-driver=journald --signature-verification=false'"
+    line: "OPTIONS='--insecure-registry={{ docker_registry_ip }}:5000 --selinux-enabled'" 
+
+- name: Enabling firewalld ports
+  firewalld: 
+    port: "{{ item }}"
+    permanent: true
+    state: enabled
+  with_items:
+  - "{{ ports_allow_worker }}"
+
+
+- name: reload service firewalld
+  systemd:
+    name: firewalld
+    state: reloaded
+
+- name: Loading kernel module
+  modprobe:
+    name: br_netfilter
+    state: present
+
+- name: restarting and enabling docker service
+  service:
+    name: docker
+    enabled: yes
+    state: restarted
+
+- name: stopping docker service
+  service:
+    name: docker
+    state: stopped
+
+
+- name: taking backup of docker-storage file
+  copy:
+    src: /etc/sysconfig/docker-storage
+    dest: /etc/sysconfig/docker-storage_bkp
+    remote_src: yes
+
+- name: deleting existing docker-storage file
+  file:
+    path: /etc/sysconfig/docker-storage
+    state: absent
+
+- name: taking backup of docker-storage-setup file
+  copy:
+    src: /etc/sysconfig/docker-storage-setup
+    dest: /etc/sysconfig/docker-storage-setup_bkp
+    remote_src: yes
+
+- name: deleting existing docker storage setup file
+  file:
+    path: /etc/sysconfig/docker-storage-setup
+    state: absent
+
+- name: modifying docker storage setup file
+  lineinfile:
+    path: /etc/sysconfig/docker-storage-setup
+    state: present
+    line: "{{ item }}"
+    create: yes
+  with_items:
+  - 'DEVS=/dev/{{ WorkerNode_VDC_Name }}'
+  - 'VG=docker-vg'
+
+- name: running docker-storage-setup
+  command: docker-storage-setup
+  ignore_errors: yes
+
+
+- name: restarting and enabling docker service
+  service:
+    name: docker
+    enabled: yes
+    state: restarted
+
+
+#- name: adding worker node to kubernetes cluster
+#  shell: "{{ join_command.stdout }}"
+
+- name: copying kubernetes cluster join command on the node
+  copy:
+    src: /root/token_file.sh
+    dest: /root/token_file.sh
+    mode: 0755
+    force: yes
+  ignore_errors: yes
+
+- name: adding worker node to kubernetes cluster
+  shell: /root/token_file.sh
+  ignore_errors: yes
+  
+- name: adding worker node to kubernetes cluster
+  command: '{{ join_command.stdout_lines[0] }}'
+  ignore_errors: yes

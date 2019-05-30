@@ -1,0 +1,8 @@
+---
+# tasks file for kubernetes
+
+- include: master.yml
+  when: inventory_hostname in groups['master_node']
+
+- include: worker.yml
+  when: inventory_hostname in groups['worker_node']

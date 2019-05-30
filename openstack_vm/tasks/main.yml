@@ -1,0 +1,20 @@
+---
+# tasks file for openstack_vm
+
+- name: creating volume for kubernetes nodes
+  include: volume.yml
+
+- name: creating vm on openstack for master node
+  include: master_vm.yml
+
+- name: creating vm on openstack for worker1 node
+  include: worker1_vm.yml
+
+- name: creating vm on openstack for worker2 node
+  include: worker2_vm.yml
+
+- name: manging tower inventory
+  include: tower.yml
+
+- name: check ip address
+  include: ip.yml

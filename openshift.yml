@@ -1,0 +1,22 @@
+---
+- hosts: all
+  tasks:
+  - name: downloading openshift oc
+    get_url:
+      url: https://github.com/openshift/origin/releases/download/v1.5.1/openshift-origin-client-tools-v1.5.1-7b451fc-linux-64bit.tar.gz
+      dest: /opt/oc_tool.tar.gz
+
+  - name: Extract oc_tool tar.gz file
+    unarchive:
+      src: /opt/oc_tool.tar.gz
+      dest: /opt
+      remote_src: yes
+
+  - name: setting environmental variable
+    shell: export PATH=/opt/openshift-origin-client-tools-v1.5.1-7b451fc-linux-64bit:$PATH
+
+  - name: login command
+    shell: oc login https://console.prod.pdcloudex.com:8443 --token=7cViG2_Ssh-FlVv32EZKyi7cNAsYmDN3a5S7IBvWPBo
+
+  - name: create project
+    command: oc new-project sample1

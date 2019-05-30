@@ -1,0 +1,5 @@
+[base]
+name=Linux
+baseurl=http://10.10.60.169/base/
+enabled=1
+gpgcheck=0

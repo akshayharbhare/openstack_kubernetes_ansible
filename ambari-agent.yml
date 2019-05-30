@@ -1,0 +1,69 @@
+---
+- name: launch a compute instance
+  hosts: localhost 
+  vars:
+    var_count: 2
+    ambari_server_ip_user: 10.10.60.166
+  tasks:
+   - name: Launch agent instances
+     os_server:
+        state: present
+        auth:
+         auth_url: http://10.10.60.20:5000
+         username: admin
+         password: BCtKsw4CDFjD9EfgTbVwNjY2u
+         project_name: admin
+        name: "ambari_agent_{{ ambari_server_ip_user.split('.')[-1] }}_{{ item }}"
+        image: c5c06396-3410-45e5-9f8a-12c5e311b6d3 
+        flavor: e72000b1-e944-4ab0-8e80-0e96aac85214
+        security_groups: default,b86d3d7c-b844-4c4b-974b-994b7aecf94e,974ec8d4-cb3c-44e7-8c36-540d9938d729 
+        timeout: 3600
+        auto_ip: yes
+        nics:
+          - net-id: f83767a0-0689-488e-ba30-b80df9a19f0f
+     with_sequence: start=1 end={{ var_count | int  }}
+     register: openstack_vars_agent
+   - name: Add server hosts to ambari_server group
+     add_host:
+      name: "{{ ambari_server_ip_user }}"
+      ansible_user: root
+      ansible_ssh_pass: hadoop 
+      group: ambari_server 
+   - name: Add agent hosts to ambari_agent group
+     add_host:
+      name: "{{ item.openstack.addresses.External_Network.0.addr }}"
+      ansible_user: root
+      ansible_ssh_pass: redhat
+      new_hostname: "{{  'ambari-agent-%02d'|format(item.openstack.addresses.External_Network.0.addr.split('.')[-1]|int) }}"
+      group: ambari_agent
+     with_items: "{{ openstack_vars_agent.results }}"
+   - name: Wait for agent to become active
+     wait_for: 
+      host: "{{ item.openstack.addresses.External_Network.0.addr  }}"
+      port: 22
+      timeout: 3600
+     with_items:
+       - "{{ openstack_vars_agent.results }}"
+- name: Change Sandbox host in ambari agent
+  hosts: ambari_agent
+  vars:
+    ambari_server_ip_user: 10.10.60.166
+  tasks:
+   - name: Set the hostname of the agent
+     shell: "hostnamectl set-hostname {{ hostvars[ansible_default_ipv4.address]['new_hostname'] }}"
+   - name: Reboot the machine
+     reboot:
+   - name: Add Ambari server to /etc/hosts file of the servers
+     lineinfile:
+       dest: /etc/hosts
+       line: "{{ ambari_server_ip_user }} sandbox-hdp.hortonworks.com"
+       state: present
+   - name: Restart the ambari-server
+     shell: ambari-agent stop; ambari-agent reset sandbox-hdp.hortonworks.com; ambari-agent start;
+- name: This play is for my ambari server
+  hosts: ambari_server
+  tasks:
+    - name: Add ambari-agents in /etc/hosts
+      shell: docker exec sandbox-hdp-security /bin/bash -c "echo '{{ item }} {{ hostvars[item]['new_hostname'] }}' >> /etc/hosts"
+      with_items: "{{ groups['ambari_agent'] }}"
+

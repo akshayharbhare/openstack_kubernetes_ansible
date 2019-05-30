@@ -1,0 +1,39 @@
+---
+
+- name: installing tower-cli package
+  yum:
+    name: ansible-tower-cli
+    state: latest
+
+- name: configuring tower-cli with ansible tower
+  command: "{{ item }}"
+  with_items:
+  - "tower-cli config host {{ tower_url }}"
+  - "tower-cli config username {{ tower_username }}"
+  - "tower-cli config password {{ tower_password }}"
+
+- name: creating inventory on ansible tower
+  command: "tower-cli inventory create --name {{ tower_inventory }} --organization {{ tower_organization }}"
+
+- name: creating group on ansible tower
+  command: "{{ item }}"
+  with_items:
+  - "tower-cli group create --name {{ tower_group_master }} --inventory {{ tower_inventory }}"
+  - "tower-cli group create --name {{ tower_group_worker }} --inventory {{ tower_inventory }}"
+
+- name: creating hosts on ansible tower
+  command: "{{ item }}"
+  with_items:
+  - "tower-cli host create --name {{ master_ip.openstack.addresses.external_network.0.addr }} --inventory {{ tower_inventory }}"
+  - "tower-cli host create --name {{ worker1_ip.openstack.addresses.external_network.0.addr }} --inventory {{ tower_inventory }}"
+  - "tower-cli host create --name {{ worker2_ip.openstack.addresses.external_network.0.addr }} --inventory {{ tower_inventory }}"
+
+- name: associating hosts under specific group on ansible tower
+  command: "{{ item }}"
+  with_items:
+  - "tower-cli host associate --host {{ master_ip.openstack.addresses.external_network.0.addr }} --group {{ tower_group_master }}"
+  - "tower-cli host associate --host {{ worker1_ip.openstack.addresses.external_network.0.addr }} --group {{ tower_group_worker }}"
+  - "tower-cli host associate --host {{ worker2_ip.openstack.addresses.external_network.0.addr }} --group {{ tower_group_worker }}"
+
+- name: launching job template of kubernetes cluster installation
+  command: "tower-cli job launch --job-template={{ tower_template }}"

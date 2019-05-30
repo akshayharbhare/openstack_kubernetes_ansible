@@ -1,0 +1,48 @@
+---
+# defaults file for openstack_vm
+
+openstack_url: http://192.168.18.89:5000
+openstack_username: admin
+openstack_password: redhat
+
+openstack_project: admin
+security_group: default
+nic: 9ab3b63c-c7e2-485e-a4c6-e2098efe9bf4
+
+instance_master_name: master_vm
+instance_master_image: 40654452-8c9d-4ddf-b68d-3234241cfdba
+instance_master_flavor: 2
+#instance_master_volume: 94ba6d88-0b1f-4c0b-8f79-61dc30183978
+
+instance_worker1_name: worker1_vm
+instance_worker1_image: 40654452-8c9d-4ddf-b68d-3234241cfdba
+instance_worker1_flavor: 2
+#instance_worker1_volume: 19ad3f7a-a105-496c-822f-49616cc32421
+
+instance_worker2_name: worker2_vm
+instance_worker2_image: 40654452-8c9d-4ddf-b68d-3234241cfdba
+instance_worker2_flavor: 2
+#instance_worker2_volume: c506ce1b-c3a8-4028-90e9-a9b944ccee32
+
+volume_zone: nova
+
+volume_master_name: master_volume
+volume_master_size: 5
+
+volume_worker1_name: worker1_volume
+volume_worker1_size: 5
+
+volume_worker2_name: worker2_volume
+volume_worker2_size: 5
+
+tower_url: 192.168.10.96
+tower_username: admin
+tower_password: redhat
+
+tower_organization: Default
+tower_inventory: sample
+
+tower_group_master: master_node
+tower_group_worker: worker_node
+
+tower_template: 9

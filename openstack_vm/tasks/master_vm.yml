@@ -1,0 +1,29 @@
+---
+- name: launch vm for master node
+  os_server:
+    state: present
+    auth:
+      auth_url: "{{ openstack_url }}"
+      username: "{{ openstack_username }}"
+      password: "{{ openstack_password }}"
+      project_name: "{{ openstack_project }}"
+    name: "{{ instance_master_name }}"
+    image:  "{{ instance_master_image }}"
+    flavor:  "{{ instance_master_flavor }}"
+    security_groups: "{{ security_group }}"
+    timeout: 3600
+    auto_ip: yes
+#    volumes: "{{ instance_master_volume }}"
+    volumes: "{{ master_volume.id }}"
+    nics:
+      - net-id: "{{ nic }}"
+  register: master_ip
+
+#- debug: var=result
+
+#- debug: var=result.openstack.addresses.external_network.0.addr
+
+#- lineinfile:
+#    line: "{{ result.openstack.addresses.external_network.0.addr }}"
+#    path: /root/1.txt
+#    create: yes

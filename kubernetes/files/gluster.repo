@@ -1,0 +1,5 @@
+[gluster]
+name=Gluster
+baseurl=http://10.10.60.169/gluster/
+enabled=1
+gpgcheck=0

@@ -1,0 +1,9 @@
+---
+- name: Master IP Address
+  debug: msg="Master IP Address:{{ master_ip.openstack.addresses.external_network.0.addr }}"
+
+- name: Worker1 IP Address
+  debug: msg="Worker1 IP Address:{{ worker1_ip.openstack.addresses.external_network.0.addr }}"
+
+- name: Worker2 IP Address
+  debug: msg="Worker2 IP Address:{{ worker2_ip.openstack.addresses.external_network.0.addr }}"

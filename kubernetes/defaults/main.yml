@@ -1,0 +1,5 @@
+---
+# defaults file for kubernetes
+MasterNode_VDC_Name: vdb
+WorkerNode_VDC_Name: vdb
+docker_registry_ip: 10.10.60.169

@@ -1,0 +1,53 @@
+---
+
+- name: creating volume for master node
+  os_volume:
+    availability_zone: "{{ volume_zone }}"
+    size: "{{ volume_master_size }}"
+    display_name: "{{ volume_master_name }}"
+    auth:
+      auth_url: "{{ openstack_url }}"
+      username: "{{ openstack_username }}"
+      password: "{{ openstack_password }}"
+      project_name: "{{ openstack_project }}"
+    state: present
+  register: master_volume
+
+- name: creating volume for worker1 node
+  os_volume:
+    availability_zone: "{{ volume_zone }}"
+    size: "{{ volume_worker1_size }}"
+    display_name: "{{ volume_worker1_name }}"
+    auth:
+      auth_url: "{{ openstack_url }}"
+      username: "{{ openstack_username }}"
+      password: "{{ openstack_password }}"
+      project_name: "{{ openstack_project }}"
+    state: present
+  register: worker1_volume
+
+- name: creating volume for worker2 node
+  os_volume:
+    availability_zone: "{{ volume_zone }}"
+    size: "{{ volume_worker2_size }}"
+    display_name: "{{ volume_worker2_name }}"
+    auth:
+      auth_url: "{{ openstack_url }}"
+      username: "{{ openstack_username }}"
+      password: "{{ openstack_password }}"
+      project_name: "{{ openstack_project }}"
+    state: present
+  register: worker2_volume
+
+
+#- debug: var=result.diff.after.id[0]
+#- debug: var=result.id
+
+- name: Master Volume ID
+  debug: msg="Master Vol ID:{{ master_volume.id }}"
+
+- name: Worker1 Volume ID
+  debug: msg="Worker1 Vol ID:{{ worker1_volume.id }}"
+
+- name: Worker2 Volume ID
+  debug: msg="Worker2 Vol ID:{{ worker2_volume.id }}"

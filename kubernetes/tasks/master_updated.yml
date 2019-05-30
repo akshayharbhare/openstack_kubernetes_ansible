@@ -1,0 +1,180 @@
+#- name: installing selinux dependecy
+#  yum:
+#    name: libselinux-python
+#    state: latest
+
+#- name: change selinux policy
+#  selinux:
+#    policy: targeted
+#    state: permissive
+
+- command: setenforce 0
+
+- command: sed -i --follow-symlinks 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/sysconfig/selinux
+
+- name: creating folder to repo backup
+  file:
+    path: /etc/yum.repos.d/bkp
+    state: directory
+
+- name: copying repo file to bkp directory
+  command: mv -f /etc/yum.repos.d/*.repo /etc/yum.repos.d/bkp/
+  ignore_errors: yes
+
+- name: copying base, docker, extras, gluster and updates repo
+  copy:
+    src: "{{ item }}"
+    dest: /etc/yum.repos.d
+  with_items:
+  - base.repo
+  - docker.repo
+  - extras.repo
+  - gluster.repo
+  - updates.repo
+
+- name: making entries in kubernetes repo file
+  blockinfile:
+    path: /etc/yum.repos.d/kubernetes.repo
+    state: present
+    create: yes
+    insertafter: EOF
+    block: |
+      [kubernetes]
+      name=Kubernetes
+      baseurl=http://10.10.60.169/kubernetes/
+      enabled=1
+      gpgcheck=0
+
+- name: yum cleaning
+  command: yum clean all
+
+- name: Installing Packages
+  yum:
+    name: ['docker', 'kubelet', 'kubeadm', 'kubectl', 'firewalld']
+    state: latest
+    exclude: kubernetes
+
+- name: configuring docker file to use ip address
+  lineinfile:
+    path: /etc/sysconfig/docker
+    regexp: '^OPTIONS'
+#    line: "OPTIONS='--selinux-enabled --insecure-registry={{ docker_registry_ip }}:5000--log-driver=journald --signature-verification=false'"
+    line: "OPTIONS='--insecure-registry={{ docker_registry_ip }}:5000 --selinux-enabled'"
+
+- name: enabling kubelet service
+  service:
+    name: kubelet
+    enabled: yes
+
+- name: Enabling firewalld ports
+  firewalld: 
+    port: "{{ item }}"
+    permanent: true
+    state: enabled
+  with_items:
+  - "{{ ports_allow_master }}"
+
+
+- name: reload service firewalld
+  systemd:
+    name: firewalld
+    state: reloaded
+
+- name: Loading kernel module
+  modprobe:
+    name: br_netfilter
+    state: present
+
+- name: making entries in bridge-nf-call-iptables file
+  lineinfile:
+    path: /proc/sys/net/bridge/bridge-nf-call-iptables
+    state: present
+    line: '1'
+
+- name: restarting kubelet service
+  service:
+    name: kubelet
+    state: restarted
+
+- name: enabling docker service
+  service:
+    name: docker
+    enabled: yes
+    state: restarted
+
+- name: stopping docker service
+  service:
+    name: docker
+    state: stopped
+
+- name: taking backup of docker-storage-setup file
+  copy:
+    src: /etc/sysconfig/docker-storage-setup
+    dest: /etc/sysconfig/docker-storage-setup_bkp
+    remote_src: yes
+
+- name: deleting existing docker storage setup file
+  file:
+    path: /etc/sysconfig/docker-storage-setup
+    state: absent
+
+- name: modifying docker storage setup file
+  lineinfile:
+    path: /etc/sysconfig/docker-storage-setup
+    state: present
+    line: "{{ item }}"
+    create: yes
+  with_items:
+  - 'DEVS=/dev/{{ VDC_Name }}'
+  - 'VG=docker-vg'
+
+- name: running docker-storage-setup
+  command: docker-storage-setup
+  ignore_errors: yes
+
+- name: restarting and enabling docker service
+  service:
+    name: docker
+    enabled: yes
+    state: restarted
+
+- name: running swapoff 
+  command: swapoff -a
+
+- name: kubeadm init command
+  command: kubeadm init --image-repository {{ docker_registry_ip }}:5000
+  ignore_errors: yes
+  register: result
+
+- name: creating kube folder
+  file:
+    path: /root/.kube
+    state: directory
+    recurse: yes
+
+- name: copying admin conf file
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /root/.kube/config
+    remote_src: yes
+
+
+- name: change owner
+  file:
+    path: /root/.kube
+    owner: root
+    group: root
+
+- name: generate toke with join command
+  command: kubeadm token create --print-join-command
+  register: join_command
+
+- debug: var=join_command.stdout_lines[0]
+
+- name: copy join command to localhost file
+  lineinfile:
+    path: /root/token_file.sh
+    create : yes
+    state: present
+    line: '{{ join_command.stdout_lines[0] }}'
+  delegate_to: localhost

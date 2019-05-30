@@ -1,0 +1,5 @@
+[docker]
+name=Docker
+baseurl=http://10.10.60.169/docker/
+enabled=1
+gpgcheck=0
